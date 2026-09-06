@@ -1,0 +1,16 @@
+{
+  "name": "descriptor-forge",
+  "type": "module",
+  "description": "Bitcoin Core importdescriptors command forge, compiled to WebAssembly",
+  "version": "0.1.0",
+  "files": [
+    "descriptor_forge_bg.wasm",
+    "descriptor_forge.js",
+    "descriptor_forge.d.ts"
+  ],
+  "main": "descriptor_forge.js",
+  "types": "descriptor_forge.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
