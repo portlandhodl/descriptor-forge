@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Descriptor Forge ⚒️ decode &amp; rebuild importdescriptors commands</title>
+<style>
+  :root {
+    --teal: #0d9488; --teal2: #14b8a6; --mint: #5eead4;
+    --blue: #2563eb; --blue2: #3b82f6;
+    --ink: #0c1a24; --soft: #4b6572; --line: #dceeec;
+    --violet: #7c3aed; --amber: #b45309; --ok: #059669; --bad: #dc2626;
+    --shadow: 0 1px 2px rgba(9,64,80,.06), 0 14px 34px -14px rgba(9,64,80,.22);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink);
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: #f3f9fa; min-height: 100vh;
+  }
+  .blob { position: fixed; border-radius: 50%; filter: blur(90px); opacity: .35; pointer-events: none; z-index: 0; }
+  .blob.teal { width: 480px; height: 480px; background: #99f6e4; top: -140px; right: -100px; }
+  .blob.blue { width: 420px; height: 420px; background: #bfdbfe; bottom: -160px; left: -120px; }
+
+  /* ── hero ─────────────────────────────────────────────── */
+  .hero {
+    position: relative; overflow: hidden; color: #fff;
+    background:
+      radial-gradient(900px 300px at 15% -20%, rgba(94,234,212,.4), transparent 60%),
+      linear-gradient(115deg, #0f766e 0%, #0d9488 35%, #2563eb 100%);
+    padding: 2.3rem 1rem 2.6rem; border-radius: 0 0 28px 28px;
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; opacity: .14;
+    background:
+      repeating-linear-gradient(90deg, #fff 0 1px, transparent 1px 56px),
+      repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 56px);
+    mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+  }
+  .hero-inner { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto;
+    display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
+  .logo {
+    width: 62px; height: 62px; border-radius: 18px; display: grid; place-items: center;
+    font-size: 30px; background: rgba(255,255,255,.16); backdrop-filter: blur(6px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 20px rgba(2,44,40,.25);
+  }
+  .hero h1 { margin: 0; font-size: 2rem; font-weight: 800; letter-spacing: -.02em; }
+  .hero p { margin: .25rem 0 0; opacity: .93; font-size: .95rem; max-width: 560px; }
+  .hero .spacer { flex: 1; }
+  .pill-glass {
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.3);
+    color: #fff; backdrop-filter: blur(6px);
+  }
+  .pill-glass.ready { background: rgba(16,185,129,.25); border-color: rgba(167,243,208,.5); }
+
+  main { position: relative; z-index: 1; max-width: 1000px; margin: 1.6rem auto 3rem; padding: 0 1rem; }
+  section { animation: fadeUp .3s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
+
+  /* ── cards ────────────────────────────────────────────── */
+  .card {
+    position: relative; background: #fff; border: 1px solid var(--line);
+    border-radius: 18px; box-shadow: var(--shadow); padding: 1.5rem 1.7rem;
+    margin-bottom: 1.4rem; overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--teal2), var(--blue2));
+  }
+  .card h2 { margin: 0 0 .25rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -.01em; color: #0b3b3e; }
+  .sub { margin: 0 0 1.1rem; color: var(--soft); font-size: .92rem; }
+
+  label { font-size: .82rem; font-weight: 700; color: var(--soft); display: block; margin-bottom: .3rem; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: .55rem .7rem; border: 1.5px solid #bdeee4; border-radius: 10px;
+    font: inherit; font-size: .9rem; background: #f8fffd; color: var(--ink);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: 0; border-color: var(--teal2); box-shadow: 0 0 0 3px rgba(20,184,166,.18);
+  }
+  textarea { min-height: 140px; font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: .8rem; resize: vertical; }
+  .grid { display: grid; gap: .9rem; margin-bottom: 1rem; }
+  .grid.c3 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .row { display: flex; gap: .55rem; align-items: center; flex-wrap: wrap; }
+  .check { display: flex; align-items: center; gap: .45rem; font-size: .9rem; font-weight: 600; color: var(--soft); }
+  .check input { width: 16px; height: 16px; accent-color: var(--teal); }
+
+  /* ── buttons ──────────────────────────────────────────── */
+  button { cursor: pointer; border: 0; border-radius: 11px; font: inherit; font-weight: 700;
+    padding: .55rem 1.15rem; transition: transform .1s ease, box-shadow .1s ease; }
+  button:hover { transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+  .btn-primary {
+    background: linear-gradient(120deg, var(--teal2), var(--blue2)); color: #fff;
+    font-size: 1rem; padding: .8rem 1.7rem; box-shadow: 0 8px 20px -6px rgba(20,184,166,.55);
+  }
+  .btn-soft { background: #eef4ff; color: var(--blue); border: 1.5px solid #c7dcff; }
+  .btn-mini { padding: .28rem .65rem; font-size: .8rem; background: #fff;
+    border: 1.5px solid var(--mint); color: var(--teal); }
+
+  /* ── code & output ────────────────────────────────────── */
+  .codeblock {
+    position: relative; background: #0b2233; color: #93f0dc; border-radius: 14px;
+    padding: 1rem 1.1rem; margin: .6rem 0; overflow-x: auto;
+    font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: .78rem;
+    white-space: pre-wrap; word-break: break-all; box-shadow: inset 0 2px 8px rgba(0,0,0,.35);
+  }
+  pre.light {
+    background: #f4faf9; border: 1px solid var(--line); border-radius: 10px;
+    padding: .7rem .9rem; overflow-x: auto; margin: .35rem 0;
+    font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: .76rem;
+    color: #0d4f47; white-space: pre-wrap; word-break: break-all;
+  }
+
+  .pill { display: inline-flex; align-items: center; gap: .25rem; padding: .16rem .65rem;
+    border-radius: 999px; font-size: .76rem; font-weight: 700; border: 1px solid transparent; }
+  .pill.teal { background: #effdfa; color: var(--teal); border-color: #99f6e4; }
+  .pill.blue { background: #eef4ff; color: var(--blue); border-color: #c7dcff; }
+  .pill.violet { background: #f5f0ff; color: var(--violet); border-color: #ddd0fb; }
+  .pill.ok { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
+  .pill.warn { background: #fffbeb; color: var(--amber); border-color: #fde68a; }
+  .pill.bad { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+
+  .desc-card {
+    border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.2rem;
+    margin: .8rem 0; background: linear-gradient(180deg, #fdfffe, #f6fbfa);
+  }
+  .desc-card .row { margin-bottom: .4rem; }
+  .err {
+    background: #fef2f2; border: 1px solid #fecaca; color: var(--bad);
+    border-radius: 12px; padding: .8rem 1.1rem; font-size: .9rem; margin: .6rem 0;
+  }
+  .hidden { display: none !important; }
+  .pop { animation: pop .25s ease both; }
+  @keyframes pop { from { opacity: 0; transform: scale(.985); } }
+
+  footer { position: relative; z-index: 1; text-align: center; color: var(--soft);
+    font-size: .85rem; padding-bottom: 2.5rem; }
+  .toast {
+    position: fixed; bottom: 1.4rem; left: 50%; transform: translateX(-50%);
+    background: #0b2233; color: var(--mint); padding: .6rem 1.3rem; border-radius: 999px;
+    font-weight: 700; font-size: .9rem; opacity: 0; transition: opacity .2s;
+    pointer-events: none; box-shadow: 0 10px 30px rgba(2,44,40,.35); z-index: 10;
+  }
+</style>
+</head>
+<body>
+<div class="blob teal"></div><div class="blob blue"></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="logo">⚒️</div>
+    <div>
+      <h1>Descriptor Forge</h1>
+      <p>Decode any pasted <code>importdescriptors</code> command — verify checksums, surface timelocks &amp; keys — then rebuild it fresh with new options. Validated in Rust.</p>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill pill-glass" id="wasm-pill">⏳ waking the Rust core…</span>
+  </div>
+</header>
+
+<main>
+  <div id="boot-error" class="err hidden"></div>
+
+  <section>
+    <div class="card">
+      <h2>🔍 Extract descriptors</h2>
+      <p class="sub">Paste any <code>importdescriptors</code> command — shell escapes, missing checksums, mangled quoting all welcome. We'll decode every descriptor, verify checksums, surface timelocks &amp; keys.</p>
+      <textarea id="extract-in" placeholder="importdescriptors '[{...}]'   — or just the JSON array"></textarea>
+      <div class="row" style="margin-top:.7rem">
+        <button class="btn-primary" id="extract-btn" type="button">🔍 Extract</button>
+        <button class="btn-soft" id="clear-btn" type="button">🧹 clear</button>
+      </div>
+      <div id="extract-error" class="err hidden"></div>
+    </div>
+
+    <div id="extract-results"></div>
+
+    <div class="card hidden pop" id="rebuild-card">
+      <h2>♻️ Rebuild as a new command</h2>
+      <p class="sub">Same descriptors, fresh options. Checksums are recomputed; anything broken gets healed.</p>
+      <div class="grid c3">
+        <div>
+          <label for="rb-ts-mode">Timestamp</label>
+          <select id="rb-ts-mode">
+            <option value="custom" selected>Custom (unix seconds)</option>
+            <option value="now">"now" — no rescan</option>
+          </select>
+        </div>
+        <div id="rb-ts-wrap">
+          <label for="rb-ts">Unix timestamp</label>
+          <input type="number" id="rb-ts">
+        </div>
+        <div><label class="check"><input type="checkbox" id="rb-active" checked> Active</label></div>
+      </div>
+      <div class="grid c3">
+        <div>
+          <label class="check"><input type="checkbox" id="rb-range-on" checked> Range</label>
+          <div class="row">
+            <input type="number" id="rb-range-start" value="0" min="0">
+            <input type="number" id="rb-range-end" value="100" min="0">
+          </div>
+        </div>
+        <div>
+          <label for="rb-label">Label (optional)</label>
+          <input type="text" id="rb-label" placeholder="vault v2">
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn-primary" id="rebuild-btn" type="button">♻️ Rebuild command</button>
+        <span class="row" id="rb-copy-row" style="display:none">
+          <button class="btn-soft" id="rb-copy-shell" type="button">🐚 copy bash-safe</button>
+          <button class="btn-soft" id="rb-copy-console" type="button">🖥️ copy console</button>
+        </span>
+      </div>
+      <div id="rb-error" class="err hidden"></div>
+      <div class="codeblock hidden" id="rb-out"></div>
+    </div>
+  </section>
+</main>
+
+<footer>Forged with 🦀 Rust + 🕸️ WebAssembly · descriptor validation &amp; checksums by rust-miniscript — same algorithm as Bitcoin Core</footer>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const toast = (msg) => {
+  const t = $("toast"); t.textContent = msg; t.style.opacity = 1;
+  setTimeout(() => t.style.opacity = 0, 1600);
+};
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const dateOf = (unix) => new Date(Number(unix) * 1000).toISOString().slice(0, 10);
+
+/* ── copy helper ───────────────────────────────────────────────────────── */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
+    }
+    toast("copied! 📋");
+  } catch (e) { toast("copy failed 😢 — select manually"); }
+}
+
+/* ── boot (quiet; errors surface only on failure) ──────────────────────── */
+(async function boot() {
+  try {
+    const wasm = await import("./pkg/descriptor_forge.js");
+    await wasm.default();
+    const pill = $("wasm-pill");
+    pill.textContent = `🦀 Rust core v${wasm.wasm_version()} · WebAssembly`;
+    pill.classList.add("ready");
+    startApp(wasm);
+  } catch (e) {
+    $("boot-error").innerHTML = `🚫 WebAssembly module failed to load: <code>${e}</code><br>
+      Build it with <code>wasm-pack build --target web</code> and serve this folder over HTTP
+      (e.g. <code>python3 -m http.server</code>) — <code>file://</code> won't work.</div>`;
+    $("boot-error").classList.remove("hidden");
+  }
+})();
+
+function startApp(wasm) {
+  let lastExtract = null;
+
+  const numOr = (id, fallback) => {
+    const n = parseInt($(id).value, 10);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  $("rb-ts-mode").onchange = () =>
+    $("rb-ts-wrap").classList.toggle("hidden", $("rb-ts-mode").value === "now");
+
+  $("clear-btn").onclick = () => {
+    $("extract-in").value = "";
+    $("extract-results").innerHTML = "";
+    $("extract-error").classList.add("hidden");
+    $("rebuild-card").classList.add("hidden");
+    lastExtract = null;
+  };
+
+  $("extract-btn").onclick = () => {
+    const err = $("extract-error"), out = $("extract-results");
+    err.classList.add("hidden"); out.innerHTML = "";
+    $("rebuild-card").classList.add("hidden");
+    lastExtract = null;
+
+    const rawInput = $("extract-in").value;
+    let res;
+    try { res = JSON.parse(wasm.extract_command(rawInput)); }
+    catch (e) {
+      err.classList.remove("hidden");
+      err.textContent = "🧯 Rust says no: " + e;
+      return;
+    }
+    lastExtract = res;
+    const hadEscapes = rawInput.includes(`'\\''`) || rawInput.includes(`'"'"'`) || rawInput.includes(`\\"`);
+    const valid = res.descriptors.filter(d => d.valid);
+
+    out.innerHTML = `<div class="card pop">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">🧾 Decoded ${res.count} descriptor${res.count > 1 ? "s" : ""}</h2>
+        ${hadEscapes ? '<span class="pill violet">🐚 shell escapes decoded</span>' : ""}
+      </div>
+      ${res.descriptors.map((d, i) => renderDesc(d, i)).join("")}
+    </div>`;
+
+    out.querySelectorAll("[data-copy-canonical]").forEach((btn) =>
+      btn.onclick = () => copyText(res.descriptors[+btn.dataset.copyCanonical].canonical));
+
+    if (valid.length) setupRebuild(res);
+  };
+
+  function renderDesc(d, i) {
+    if (!d.valid) return `<div class="desc-card">
+      <span class="pill bad">entry #${i} — invalid descriptor ❌</span>
+      <pre class="light">${esc(d.base)}</pre><div class="err">${esc(d.error)}</div></div>`;
+
+    const cs = d.provided_checksum == null
+      ? `<span class="pill warn">no checksum — computed #${d.computed_checksum}</span>`
+      : d.checksum_valid
+        ? `<span class="pill ok">#${d.provided_checksum} ✅</span>`
+        : `<span class="pill bad">#${d.provided_checksum} ❌ → should be #${d.computed_checksum}</span>`;
+    const meta = [
+      ["active", d.active], ["timestamp", d.timestamp != null ? `${d.timestamp} (${d.timestamp === "now" ? "no rescan" : dateOf(d.timestamp)})` : undefined],
+      ["range", d.range ? `[${d.range[0]} → ${d.range[1]}]` : undefined],
+      ["next_index", d.next_index], ["label", d.label],
+    ].filter(([, v]) => v !== undefined)
+     .map(([k, v]) => `<span class="pill blue">${k}: ${esc(v)}</span>`).join(" ");
+    const locks = (d.timelocks || []).map(n =>
+      `<span class="pill violet">🔒 after(${n}) · ${dateOf(n)}</span>`).join(" ");
+    const keys = d.keys.map(k => `<pre class="light">${esc(k)}</pre>`).join("");
+    return `<div class="desc-card pop">
+      <div class="row">
+        <span class="pill teal">#${i} · ${esc(d.script_type)}</span>
+        <span class="pill ${d.internal ? "blue" : "teal"}">${d.internal ? "🔁 change" : "📥 receive"}</span>
+        ${cs}${locks}
+      </div>
+      <div class="row">${meta}</div>
+      <label>keys (${d.keys.length})</label>${keys}
+      <label>canonical descriptor</label>
+      <pre class="light">${esc(d.canonical)}</pre>
+      <div class="row">
+        <button class="btn-mini" type="button" data-copy-canonical="${i}">📋 copy canonical</button>
+      </div>
+    </div>`;
+  }
+
+  function setupRebuild(res) {
+    const first = res.descriptors.find(d => d.valid);
+    $("rb-ts").value = typeof first.timestamp === "number" ? first.timestamp : "";
+    $("rb-active").checked = first.active !== false;
+    if (Array.isArray(first.range)) {
+      $("rb-range-on").checked = true;
+      $("rb-range-start").value = first.range[0];
+      $("rb-range-end").value = first.range[1];
+    }
+    $("rb-label").value = "";
+    $("rb-out").classList.add("hidden");
+    $("rb-copy-row").style.display = "none";
+    $("rebuild-card").classList.remove("hidden");
+  }
+
+  $("rebuild-btn").onclick = () => {
+    const err = $("rb-error"), outEl = $("rb-out");
+    err.classList.add("hidden"); outEl.classList.add("hidden");
+    const params = {
+      entries: lastExtract.descriptors.filter(d => d.valid)
+        .map(d => ({ desc: d.canonical, internal: !!d.internal })),
+      active: $("rb-active").checked,
+      timestamp: $("rb-ts-mode").value === "now" ? "now" : numOr("rb-ts", "now"),
+      range: $("rb-range-on").checked
+        ? [numOr("rb-range-start", 0), numOr("rb-range-end", 1000)]
+        : null,
+      label: $("rb-label").value.trim(),
+    };
+    try {
+      const res = JSON.parse(wasm.rebuild_command(JSON.stringify(params)));
+      outEl.classList.remove("hidden");
+      outEl.textContent = res.command_shell;
+      $("rb-copy-row").style.display = "";
+      $("rb-copy-shell").onclick = () => copyText(res.command_shell);
+      $("rb-copy-console").onclick = () => copyText(res.command);
+      toast("rebuilt! ♻️");
+    } catch (e) {
+      err.classList.remove("hidden");
+      err.textContent = "🧯 Rust says no: " + e;
+    }
+  };
+}
+</script>
+</body>
+</html>
