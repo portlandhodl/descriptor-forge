@@ -4,6 +4,12 @@ A quick & fun WebAssembly page for decoding and rebuilding Bitcoin Core
 `importdescriptors` commands. All descriptor validation and checksums are done
 by **rust-miniscript** (same checksum algorithm as Bitcoin Core) compiled to WASM.
 
+## Run — hosted
+
+<https://portlandhodl.github.io/descriptor-forge/> — served via GitHub Pages
+(`pkg/` is committed so the dev page works; `/descriptor-forge.html` is the
+single-file build).
+
 ## Run — single file (easiest)
 
 `descriptor-forge.html` is the whole app in one file — the compiled WASM is
